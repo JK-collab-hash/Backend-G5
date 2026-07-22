@@ -153,8 +153,45 @@ async function conteoPorCandidato(votacionId) {
   return rows;
 }
 
+async function registroVotaciones() {
+  const [rows] = await db.query(
+    `SELECT v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, v.fechaCierreReal
+     FROM Votacion v
+     ORDER BY v.fecha_ini DESC`
+  );
+  return rows;
+}
+
+async function ganadorCandidato(votacionId) {
+  const [rows] = await db.query(
+    `SELECT u.nombre, COUNT(vo.votoId) AS total_votos
+     FROM Voto vo
+     JOIN Candidato ca ON vo.candidatoId = ca.candidatoId
+     JOIN Usuario u ON ca.dni = u.DNI
+     WHERE vo.votacionId = ?
+     GROUP BY ca.candidatoId, u.nombre
+     ORDER BY total_votos DESC
+     LIMIT 1`,
+    [votacionId]
+  );
+  return rows[0] || null;
+}
+
+async function ganadorReferendum(votacionId) {
+  const [rows] = await db.query(
+    `SELECT vo.opcion, COUNT(vo.votoId) AS total_votos
+     FROM Voto vo
+     WHERE vo.votacionId = ? AND vo.normaId IS NOT NULL
+     GROUP BY vo.opcion
+     ORDER BY total_votos DESC
+     LIMIT 1`,
+    [votacionId]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   listarActivasVigentes, organizacionesDeUsuario, ubicacionDeDistrito, normaDeVotacion, candidatosDeVotacion, findActivaVigentePorId, findById,
   yaVoto, registrarVotoReferendum, registrarVotoCandidato, registrarVotoRegistro, resultadosCandidatos, resultadosReferendums, crear, crearNorma,
-  asociarCandidatos, actualizarEstado, conteoPorCandidato,
+  asociarCandidatos, actualizarEstado, conteoPorCandidato, registroVotaciones, ganadorCandidato, ganadorReferendum,
 };

@@ -64,4 +64,14 @@ async function cerrarVotacion(req, res) {
   }
 }
 
-module.exports = { getVotacionesDisponibles, registrarVoto, getResultados, crearVotacion, toggleVotacion, cerrarVotacion };
+async function getRegistro(req, res) {
+  try {
+    const registro = await votacionService.getRegistro();
+    return res.json(registro);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Error obteniendo el registro.' });
+  }
+}
+
+module.exports = { getVotacionesDisponibles, registrarVoto, getResultados, crearVotacion, toggleVotacion, cerrarVotacion, getRegistro };

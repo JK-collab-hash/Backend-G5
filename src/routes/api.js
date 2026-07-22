@@ -17,6 +17,7 @@ router.post('/auth/solicitar-cambio-contrasena', authCtrl.solicitarCambioContras
 router.get('/votaciones/disponibles', requireAuth, votCtrl.getVotacionesDisponibles);
 router.post('/votaciones/votar', requireAuth, votCtrl.registrarVoto);
 router.get('/votaciones/resultados', requireAuth, votCtrl.getResultados);
+router.get('/votaciones/registro', requireAdmin, votCtrl.getRegistro);
 router.post('/votaciones/crear', requireAdmin, votCtrl.crearVotacion);
 router.post('/votaciones/toggle/:id', requireAdmin, votCtrl.toggleVotacion);
 router.post('/votaciones/cerrar/:id', requireAdmin, votCtrl.cerrarVotacion);

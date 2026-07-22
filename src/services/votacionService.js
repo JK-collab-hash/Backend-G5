@@ -129,4 +129,35 @@ async function cerrarVotacion(id) {
   return { mensaje: 'Votación cerrada y cargo asignado al ganador.', ganadorDni: candidato.dni, cargoId: candidato.cargoId };
 }
 
-module.exports = { getVotacionesDisponibles, registrarVoto, getResultados, crearVotacion, toggleVotacion, cerrarVotacion };
+function calcularEstado(v) {
+  if (v.fechaCierreReal) return 'Cerrada anticipadamente';
+  if (!v.activa || new Date(v.fecha_fin) <= new Date()) return 'Finalizada';
+  return 'En curso';
+}
+
+async function getRegistro() {
+  const votaciones = await votacionRepository.registroVotaciones();
+
+  return Promise.all(votaciones.map(async (v) => {
+    const estado = calcularEstado(v);
+    let resultado = null;
+
+    if (estado !== 'En curso') {
+      if (v.tipo === 'referendum') {
+        const ganador = await votacionRepository.ganadorReferendum(v.votacionId);
+        if (ganador && ganador.total_votos > 0) {
+          resultado = `${ganador.opcion === 'a_favor' ? 'A favor' : 'En contra'} (${ganador.total_votos} votos)`;
+        }
+      } else {
+        const ganador = await votacionRepository.ganadorCandidato(v.votacionId);
+        if (ganador && ganador.total_votos > 0) {
+          resultado = `${ganador.nombre} (${ganador.total_votos} votos)`;
+        }
+      }
+    }
+
+    return { ...v, estado, resultado };
+  }));
+}
+
+module.exports = { getVotacionesDisponibles, registrarVoto, getResultados, crearVotacion, toggleVotacion, cerrarVotacion, getRegistro };
