@@ -1,42 +1,26 @@
-const db = require('../config/database');
+const authService = require('../services/authService');
 
-async function loginUsuario(req, res) {
-  const { dni } = req.body;
-  if (!dni)
-    return res.status(400).json({ error: 'DNI requerido.' });
-  try{
-    const [rows] = await db.query(
-      `SELECT u.DNI, u.nombre, u.rol, c.cargoId, c.nombre AS cargo, p.partidoId, p.nombre AS partido, d.distritoId, d.nombre AS distrito
-       FROM Usuario u LEFT JOIN Cargo c ON u.cargoId = c.cargoId LEFT JOIN PartidoPolitico p ON u.partidoId = p.partidoId LEFT JOIN Distrito d 
-       ON u.distritoId = d.distritoId
-       WHERE u.DNI = ?`, [dni]
-    );
-    if (rows.length === 0)
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    const usuario = rows[0];
+async function login(req, res) {
+  try {
+    const { dni, contraseña } = req.body;
+    const { usuario, error } = await authService.login(dni, contraseña);
+    if (error) return res.status(error.status).json({ error: error.mensaje });
+
     req.session.usuario = usuario;
     return res.json({ ok: true, usuario });
-  }catch(err){
+  } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Error en el servidor.' });
   }
 }
 
-async function loginAdmin(req, res) {
-  const { dni, contrasena } = req.body;
-  if (!dni || !contrasena)
-    return res.status(400).json({ error: 'DNI y contraseña requeridos.' });
+async function solicitarCambioContraseña(req, res) {
   try {
-    const [rows] = await db.query(
-      `SELECT u.DNI, u.nombre, u.rol, c.cargoId, c.nombre AS cargo, p.partidoId, p.nombre AS partido, d.distritoId, d.nombre AS distrito
-       FROM Usuario u LEFT JOIN Cargo c ON u.cargoId = c.cargoId LEFT JOIN PartidoPolitico p ON u.partidoId = p.partidoId LEFT JOIN Distrito d ON u.distritoId = d.distritoId
-       WHERE u.DNI = ? AND u.contrasena = ? AND u.rol = 'admin'`, [dni, contrasena]
-    );
-    if (rows.length === 0)
-      return res.status(401).json({ error: 'Credenciales incorrectas.' });
-    req.session.usuario = rows[0];
-    return res.json({ ok: true, usuario: rows[0] });
-  }catch(err){
+    const { dni, nombre, contraseñaActual, contraseñaNueva } = req.body;
+    const { error, mensaje } = await authService.solicitarCambioContraseña(dni, nombre, contraseñaActual, contraseñaNueva);
+    if (error) return res.status(error.status).json({ error: error.mensaje });
+    return res.status(201).json({ ok: true, mensaje });
+  } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Error en el servidor.' });
   }
@@ -55,4 +39,4 @@ function getSession(req, res) {
   return res.json({ tipo: null });
 }
 
-module.exports = {loginUsuario, loginAdmin, logout, getSession };
+module.exports = { login, logout, getSession, solicitarCambioContraseña };
