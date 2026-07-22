@@ -86,7 +86,7 @@ async function registrarVotoRegistro(dni, votacionId) {
 
 async function resultadosCandidatos() {
   const [rows] = await db.query(
-    `SELECT v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, u.nombre AS candidato,
+    `SELECT v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, v.fechaCierreReal, u.nombre AS candidato,
       COUNT(vo.votoId) AS total_votos, MAX(o.nombre) AS organizacion
      FROM Votacion v
      LEFT JOIN VotacionCandidato vc ON vc.votacionId = v.votacionId
@@ -95,7 +95,7 @@ async function resultadosCandidatos() {
      LEFT JOIN Voto vo ON vo.votacionId = v.votacionId AND vo.candidatoId = ca.candidatoId
      LEFT JOIN Organizacion o ON ca.organizacionId = o.organizacionId
      WHERE v.tipo <> 'referendum'
-     GROUP BY v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, ca.candidatoId, u.nombre
+     GROUP BY v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, v.fechaCierreReal, ca.candidatoId, u.nombre
      ORDER BY v.votacionId, total_votos DESC`
   );
   return rows;
@@ -103,10 +103,10 @@ async function resultadosCandidatos() {
 
 async function resultadosReferendums() {
   const [rows] = await db.query(
-    `SELECT v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, n.titulo AS norma, vo.opcion, COUNT(vo.votoId) AS total_votos
+    `SELECT v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, v.fechaCierreReal, n.titulo AS norma, vo.opcion, COUNT(vo.votoId) AS total_votos
      FROM Votacion v JOIN Norma n ON n.votacionId = v.votacionId LEFT JOIN Voto vo ON vo.votacionId = v.votacionId AND vo.normaId = n.normaId
      WHERE v.tipo = 'referendum'
-     GROUP BY v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, n.titulo, vo.opcion
+     GROUP BY v.votacionId, v.titulo, v.tipo, v.activa, v.fecha_ini, v.fecha_fin, v.fechaCierreReal, n.titulo, vo.opcion
      ORDER BY v.votacionId`
   );
   return rows;
@@ -139,6 +139,15 @@ async function asociarCandidatos(votacionId, candidatoIds) {
 
 async function actualizarEstado(votacionId, activa) {
   await db.query('UPDATE Votacion SET activa = ? WHERE votacionId = ?', [activa, votacionId]);
+}
+
+// Cierre permanente: además de desactivarla, marca fechaCierreReal para que
+// ya no se pueda reactivar (a diferencia de actualizarEstado, que es reversible).
+async function actualizarCierre(votacionId) {
+  await db.query(
+    'UPDATE Votacion SET activa = FALSE, fechaCierreReal = NOW() WHERE votacionId = ?',
+    [votacionId]
+  );
 }
 
 async function conteoPorCandidato(votacionId) {
@@ -193,5 +202,5 @@ async function ganadorReferendum(votacionId) {
 module.exports = {
   listarActivasVigentes, organizacionesDeUsuario, ubicacionDeDistrito, normaDeVotacion, candidatosDeVotacion, findActivaVigentePorId, findById,
   yaVoto, registrarVotoReferendum, registrarVotoCandidato, registrarVotoRegistro, resultadosCandidatos, resultadosReferendums, crear, crearNorma,
-  asociarCandidatos, actualizarEstado, conteoPorCandidato, registroVotaciones, ganadorCandidato, ganadorReferendum,
+  asociarCandidatos, actualizarEstado, actualizarCierre, conteoPorCandidato, registroVotaciones, ganadorCandidato, ganadorReferendum,
 };

@@ -84,6 +84,10 @@ async function toggleVotacion(id) {
   const votacion = await votacionRepository.findById(id);
   if (!votacion) return { error: { status: 404, mensaje: 'Votación no encontrada.' } };
 
+  if (votacion.fechaCierreReal) {
+    return { error: { status: 400, mensaje: 'Esta votación fue cerrada definitivamente y no se puede reactivar.' } };
+  }
+
   const nuevoEstado = !votacion.activa;
   if (nuevoEstado === true && new Date(votacion.fecha_fin) <= new Date()) {
     return { error: { status: 400, mensaje: 'No se puede reactivar: el plazo de esta votación ya finalizó.' } };
@@ -96,7 +100,11 @@ async function cerrarVotacion(id) {
   const votacion = await votacionRepository.findById(id);
   if (!votacion) return { error: { status: 404, mensaje: 'Votación no encontrada.' } };
 
-  await votacionRepository.actualizarEstado(id, false);
+  if (votacion.fechaCierreReal) {
+    return { error: { status: 400, mensaje: 'Esta votación ya fue cerrada definitivamente.' } };
+  }
+
+  await votacionRepository.actualizarCierre(id);
   
   if (votacion.tipo === 'referendum') {
     return { mensaje: 'Referéndum cerrado. Revisa los resultados en el panel.' };
